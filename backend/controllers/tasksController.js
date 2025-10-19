@@ -16,7 +16,7 @@ exports.createTask = async (req, res) => {
 exports.getTasksByProject = async (req, res) => {
   try {
     const tasks = await Task.find({ projectId: req.params.projectId }).sort({
-      createdAt: -1,
+      createdAt: 1,
     });
     res.json(tasks);
   } catch (err) {

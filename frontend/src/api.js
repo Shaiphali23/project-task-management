@@ -18,4 +18,4 @@ export const deleteTask = (id) => API.delete(`/tasks/${id}`);
 
 // AI
 export const summarizeProject = (tasks) => API.post("/ai/summarize", { tasks });
-export const askQuestion = (card, question) => API.post("/ai/qa", { card, question });
+export const askQuestion = (data) => API.post("/ai/qa", data);

@@ -99,47 +99,65 @@ exports.summarizeProject = async (req, res) => {
     const aiResp = await callGeminiGenerateContent(contents, generationConfig);
     const text = extractTextFromGeminiResponse(aiResp);
 
-    res.json({ success: true, text, raw: aiResp });
+    return res.json({ success: true, text, raw: aiResp });
   } catch (err) {
     console.error("AI summarize error:", err.response?.data || err.message);
-    res
-      .status(500)
-      .json({
-        error: "AI request failed",
-        details: err.response?.data || err.message,
-      });
+    res.status(500).json({
+      error: "AI request failed",
+      details: err.response?.data || err.message,
+    });
   }
 };
 
 exports.qaOnCard = async (req, res) => {
   try {
-    const { card, question } = req.body;
-    if (!card || !question)
-      return res.status(400).json({ error: "card and question required" });
+    const { card, tasks, question } = req.body; // Accept both card AND tasks
 
-    const promptText = [
-      `Task card:`,
-      `Title: ${card.title}`,
-      `Description: ${card.description || ""}`,
-      `Status: ${card.status || "todo"}`,
-      ``,
-      `Question: ${question}`,
-      `Answer concisely. If not enough info, state that you cannot answer from the card.`,
-    ].join("\n");
+    if (!question) {
+      return res.status(400).json({ error: "question is required" });
+    }
+
+    let promptText;
+
+    if (tasks && Array.isArray(tasks)) {
+      // ✅ Project-wide Q&A - for questions about multiple tasks
+      promptText = [
+        `Here are all the tasks in this project:`,
+        ...tasks.map(
+          (task, index) =>
+            `Task ${index + 1}: "${task.title}"${
+              task.description ? " - " + task.description : ""
+            } [Status: ${task.status}]`
+        ),
+        ``,
+        `Question: ${question}`,
+        `Please answer based on all the tasks listed above. Be specific and helpful.`,
+      ].join("\n");
+    } else if (card) {
+      // Single card Q&A
+      promptText = [
+        `Task card:`,
+        `Title: ${card.title || "No title"}`,
+        `Description: ${card.description || "No description"}`,
+        `Status: ${card.status || "todo"}`,
+        ``,
+        `Question: ${question}`,
+        `Answer concisely based on this specific task card.`,
+      ].join("\n");
+    } else {
+      return res.status(400).json({ error: "Either card or tasks required" });
+    }
 
     const contents = [{ parts: [{ text: promptText }] }];
-
     const aiResp = await callGeminiGenerateContent(contents, {});
     const text = extractTextFromGeminiResponse(aiResp);
 
-    res.json({ success: true, text, raw: aiResp });
+    return res.json({ success: true, text, raw: aiResp });
   } catch (err) {
     console.error("AI QA error:", err.response?.data || err.message);
-    res
-      .status(500)
-      .json({
-        error: "AI request failed",
-        details: err.response?.data || err.message,
-      });
+    return res.status(500).json({
+      error: "AI request failed",
+      details: err.response?.data || err.message,
+    });
   }
 };
